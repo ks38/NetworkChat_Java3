@@ -53,16 +53,13 @@ public class InMemoryAuthService implements AuthService {
 
     @Override
     public void deleteUser(String login, String pass) {
-
     }
 
     @Override
     public void changePassword(String login, String oldPass, String newPass) {
-
     }
 
     @Override
     public void resetPassword(String login, String newPass, String secret) {
-
     }
 }

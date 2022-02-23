@@ -12,3 +12,4 @@ public interface AuthService {
     void changePassword(String login, String oldPass, String newPass);
     void resetPassword(String login, String newPass, String secret);
 }
+

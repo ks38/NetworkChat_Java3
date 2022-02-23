@@ -23,6 +23,7 @@ public class Server {
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server start!");
+            authService.start();
             while (true) {
                 System.out.println("Waiting for connection......");
                 var socket = serverSocket.accept();

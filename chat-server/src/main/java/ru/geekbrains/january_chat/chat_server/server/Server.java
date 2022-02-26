@@ -7,22 +7,28 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
     public static final String REGEX = "%!%";
     private final int port;
     private final AuthService authService;
     private final List<ClientHandler> clientHandlers;
+    private final ExecutorService executorService;
 
     public Server(AuthService authService) {
         port = PropertyReader.getInstance().getPort();
         this.clientHandlers = new ArrayList<>();
         this.authService = authService;
+        executorService = Executors.newCachedThreadPool();
     }
 
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server start!");
+            authService.start();
             while (true) {
                 System.out.println("Waiting for connection......");
                 var socket = serverSocket.accept();
@@ -89,7 +95,8 @@ public class Server {
     }
 
     private void shutdown() {
-
+        authService.stop();
+        executorService.shutdownNow();
     }
 
     public AuthService getAuthService() {
@@ -103,5 +110,9 @@ public class Server {
             }
         }
         return null;
+    }
+
+    public Executor getExecutionService() {
+        return executorService;
     }
 }

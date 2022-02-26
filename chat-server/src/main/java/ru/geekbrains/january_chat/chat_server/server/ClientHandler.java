@@ -34,7 +34,7 @@ public class ClientHandler {
     }
 
     public void handle() {
-        handlerThread = new Thread(() -> {
+            server.getExecutionService().execute(() -> {
             authorize();
             while (!Thread.currentThread().isInterrupted() && !socket.isClosed()) {
                 try {
@@ -46,7 +46,6 @@ public class ClientHandler {
                 }
             }
         });
-        handlerThread.start();
     }
 
     private void handleMessage(String message) {

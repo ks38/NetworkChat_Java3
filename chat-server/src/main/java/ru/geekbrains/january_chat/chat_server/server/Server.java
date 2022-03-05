@@ -1,5 +1,7 @@
 package ru.geekbrains.january_chat.chat_server.server;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.geekbrains.january_chat.chat_server.auth.AuthService;
 import ru.geekbrains.january_chat.props.PropertyReader;
 
@@ -7,31 +9,43 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
     public static final String REGEX = "%!%";
     private final int port;
     private final AuthService authService;
     private final List<ClientHandler> clientHandlers;
+    private final ExecutorService executorService;
+
+    private static final Logger serverLog = LogManager.getLogger(Server.class);
 
     public Server(AuthService authService) {
         port = PropertyReader.getInstance().getPort();
         this.clientHandlers = new ArrayList<>();
         this.authService = authService;
+        executorService = Executors.newCachedThreadPool();
     }
 
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("Server start!");
+            //System.out.println("Server starts!");
+            serverLog.info("ServerLOG_INFO: Server starts!");
+            authService.start();
             while (true) {
-                System.out.println("Waiting for connection......");
+                //System.out.println("Waiting for connection......");
+                serverLog.info("ServerLOG_INFO: Server starts... Waiting for clients");
                 var socket = serverSocket.accept();
-                System.out.println("Client connected");
+                //System.out.println("Client connected");
+                serverLog.info("ServerLOG_INFO: Client connected!");
                 var clientHandler = new ClientHandler(socket, this);
                 clientHandler.handle();
             }
         } catch (IOException e) {
             e.printStackTrace();
+            serverLog.error("ServerLOG_ERROR: Caught IOException");
         } finally {
             authService.stop();
             shutdown();
@@ -58,6 +72,7 @@ public class Server {
 
     public synchronized void addAuthorizedClientToList(ClientHandler clientHandler) {
         clientHandlers.add(clientHandler);
+        serverLog.info("LOG: Client added");
         sendOnlineClients();
     }
 
@@ -89,7 +104,9 @@ public class Server {
     }
 
     private void shutdown() {
-
+        serverLog.info("LOG: shutdown");
+        authService.stop();
+        executorService.shutdownNow();
     }
 
     public AuthService getAuthService() {
@@ -103,5 +120,9 @@ public class Server {
             }
         }
         return null;
+    }
+
+    public Executor getExecutionService() {
+        return executorService;
     }
 }

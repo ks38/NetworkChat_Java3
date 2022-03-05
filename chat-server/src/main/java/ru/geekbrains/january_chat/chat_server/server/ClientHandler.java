@@ -1,5 +1,7 @@
 package ru.geekbrains.january_chat.chat_server.server;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.geekbrains.january_chat.chat_server.error.WrongCredentialsException;
 import ru.geekbrains.january_chat.props.PropertyReader;
 
@@ -19,6 +21,7 @@ public class ClientHandler {
     private Thread handlerThread;
     private Server server;
     private String user;
+    private static final Logger clientHandlerLog = LogManager.getLogger(ClientHandler.class);
 
     public ClientHandler(Socket socket, Server server) {
         authTimeout = PropertyReader.getInstance().getAuthTimeout();
@@ -27,26 +30,28 @@ public class ClientHandler {
             this.socket = socket;
             this.in = new DataInputStream(socket.getInputStream());
             this.out = new DataOutputStream(socket.getOutputStream());
-            System.out.println("Handler created");
+            //System.out.println("Handler created");
+            clientHandlerLog.info("CH_LOG_INFO: Handler created");
         } catch (IOException e) {
-            System.out.println("Connection broken with user " + user);
+            clientHandlerLog.error("CH_LOG_ERROR: Connection broken with user " + user);
+            //System.out.println("Connection broken with user " + user);
         }
     }
 
     public void handle() {
-        handlerThread = new Thread(() -> {
+            server.getExecutionService().execute(() -> {
             authorize();
             while (!Thread.currentThread().isInterrupted() && !socket.isClosed()) {
                 try {
                     var message = in.readUTF();
                     handleMessage(message);
                 } catch (IOException e) {
-                    System.out.println("Connection broken with user " + user);
+                    clientHandlerLog.error("CH_LOG_ERROR: Connection broken with user " + user);
+                    //System.out.println("Connection broken with user " + user);
                     server.removeAuthorizedClientFromList(this);
                 }
             }
         });
-        handlerThread.start();
     }
 
     private void handleMessage(String message) {
@@ -85,7 +90,8 @@ public class ClientHandler {
     }
 
     private void authorize() {
-        System.out.println("Authorizing");
+        clientHandlerLog.info("CH_LOG_INFO: Authorizing");
+        //System.out.println("Authorizing");
         var timer = new Timer(true);
         timer.schedule(new TimerTask() {
             @Override
@@ -95,9 +101,11 @@ public class ClientHandler {
                         send("/error" + Server.REGEX + "Authentication timeout!\nPlease, try again later!");
                         Thread.sleep(50);
                         socket.close();
-                        System.out.println("Connection with client closed");
+                        clientHandlerLog.info("CH_LOG_INFO: Connection with client closed");
+                        //System.out.println("Connection with client closed");
                     }
                 } catch (InterruptedException | IOException e) {
+                    clientHandlerLog.error("CH_LOG_ERROR: " + e);
                     e.getStackTrace();
                 }
             }
@@ -113,12 +121,14 @@ public class ClientHandler {
                         nickname = server.getAuthService().authorizeUserByLoginAndPassword(parsedAuthMessage[1], parsedAuthMessage[2]);
                     } catch (WrongCredentialsException e) {
                         response = "/error" + Server.REGEX + e.getMessage();
-                        System.out.println("Wrong credentials, nick " + parsedAuthMessage[1]);
+                        clientHandlerLog.info("Wrong credentials, nick \" + parsedAuthMessage[1]");
+                        //System.out.println("Wrong credentials, nick " + parsedAuthMessage[1]);
                     }
 
                     if (server.isNickBusy(nickname)) {
                         response = "/error" + Server.REGEX + "this client already connected";
-                        System.out.println("Nick busy " + nickname);
+                        clientHandlerLog.info("Nick busy " + nickname);
+                        //System.out.println("Nick busy " + nickname);
                     }
                     if (!response.equals("")) {
                         send(response);
@@ -128,10 +138,10 @@ public class ClientHandler {
                         send("/auth_ok" + Server.REGEX + nickname);
                         break;
                     }
-
                 }
             }
         } catch (IOException e) {
+            clientHandlerLog.error("CH_LOG_ERROR: " + e);
             e.printStackTrace();
         }
     }
@@ -140,6 +150,7 @@ public class ClientHandler {
         try {
             out.writeUTF(msg);
         } catch (IOException e) {
+            clientHandlerLog.error("CH_LOG_ERROR: " + e);
             e.printStackTrace();
         }
     }
